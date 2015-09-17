@@ -1,0 +1,8 @@
+$ git clone https://github.com/mysql/mysql-server.git
+Cloning into 'mysql-server'...
+remote: Counting objects: 1101936, done.
+remote: Total 1101936 (delta 0), reused 0 (delta 0), pack-reused 1101936
+Receiving objects: 100% (1101936/1101936), 558.13 MiB | 1.65 MiB/s, done.
+Resolving deltas: 100% (910711/910711), done.
+Checking connectivity... done.
+Checking out files: 100% (24148/24148), done.

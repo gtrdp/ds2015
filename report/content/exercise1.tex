@@ -1,0 +1,45 @@
+%!TEX root = ../report.tex
+\section*{Cloning the repository to work offline}
+In this assignment, \texttt{mysql-server} repository in GitHub is used. The link to the repository is as follows: https://github.com/mysql/mysql-server. In order to work quickly and efficiently, the online repository has to be moved offline using \texttt{clone} command in git. The command and the result is shown as follows:\\
+
+\lstinputlisting[caption=Command to clone mysql-server repository., label=code:clone, numbers=left, language=bash]{./content/listing/git-clone.txt}
+
+The operation above took around 10 minutes. The time required actually depends highly on the Internet connection. After this operation, every following operations will be done locally. This will save time used to do the operation.
+
+\section*{How many versions are in the repository?}
+There are \textbf{118,088} commits since the repository started. This value is derived from this operation in terminal:
+
+\begin{lstlisting}[language=bash,caption=Command to get commit count., label=code:count]
+	$ git rev-list HEAD --count
+	118088
+\end{lstlisting}
+
+As the git repository is quite big, almost 1GB of data, the above mentioned operation took a couple of seconds to complete.
+
+\section*{When was the first one committed?}
+The first commit was done on \textbf{Monday, July 31st 2000}. This information was extracted from the following command:
+
+\begin{lstlisting}[language=bash,caption=Command to get first commit., label=code:firstCommit]
+$ git log --reverse
+commit 7eec25e393727b16bb916b50d82b0aa3084e065c
+Author: bk@work.mysql.com <>
+Date:   Mon Jul 31 21:10:05 2000 +0200
+
+    Initial repository create
+\end{lstlisting}
+
+The command above basically shows the git log the other way around which means starting from the very beginning. 
+
+\section*{When was the last one committed?}
+The last commit was committed by Rick Hillegas on \textbf{Friday, July 17 2015}, as can be seen on \autoref{code:lastCommit} below.
+
+\begin{lstlisting}[language=bash,caption=Command to get last commit., label=code:lastCommit]
+$ git log -1
+commit a2757a60a7527407d08115e44e889a25f22c96c6
+Author: Rick Hillegas <rick.hillegas@oracle.com>
+Date:   Fri Jul 17 12:15:05 2015 -0700
+
+    Bug#21450084 LET JSON_INSERT() INSERT INTO THE MIDDLE OF JSON ARRAYS.
+    
+    (cherry picked from commit 27368364403e241c86650f635c72664b4c11d7ff)
+\end{lstlisting}
