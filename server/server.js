@@ -13,9 +13,60 @@ var leaderPort = 0;
 
 var net = require('net');
 var server;
+var counter = 0;
+var someoneTakeOver = false;
 
-function multiMsg(message, from, to) {
+function multiMsg(from, type) {
+	var numberOfLoop = 8090 - from;
 
+	switch(type) {
+		case 'election':
+			var i = 1;
+			for (i = 1; i < numberOfLoop; i++) {
+				uniMsg('{"message": "election", "from": "'+from+'"}', from, (from+i), numberOfLoop);	
+			}
+			break;
+		case 'broadcast':
+			break;
+		default:
+			break;
+	}
+}
+
+function uniMsg(message, from, to, numberOfLoop) {
+	var client = new net.Socket();
+
+	client.connect(to, '127.0.0.1', function() {
+		client.write(message);
+	});
+
+	client.on('data', function(data) {
+		if(data.toString() == 'ok') {
+			console.log('Server ' +to+ ' will take over election.');
+			someoneTakeOver = true;
+		} else {
+			console.log('No response from ' + to + '.');
+
+            leaderPort = currentPort;
+            console.log('I\'m the Leader! \n');
+		}
+		client.destroy();
+	});
+
+	client.on('error', function(error) {
+		if (error.code === 'ECONNREFUSED') {
+            console.log('Server ' + to + ' is down.');
+            counter++;
+        }
+	});
+
+	client.on('close', function() {
+		if(counter == (numberOfLoop - 1) && !someoneTakeOver && leaderPort == 0) {
+			leaderPort = from;
+            console.log('I\'m the Leader! Viva '+from+'! \n');
+            counter = 0;
+		}
+	});
 }
 
 function createServer(portNumber) {
@@ -32,6 +83,7 @@ function createServer(portNumber) {
 				console.log('Got a election request from ' + from);
 				socket.write('ok');
 
+				leaderPort = 0;
 				startElectionTCP(portNumber);
 			} else if (message == 'leader') {
 				leaderPort = from;
@@ -59,35 +111,41 @@ function createServer(portNumber) {
 
 function startElectionTCP(ourPort){
 	console.log('Initiating election...');
-	console.log('Sending election request to ' + (ourPort+1) + '...');
+	console.log('Sending election request higher number of port...');
 
-	var destinationPort = ourPort + 1;
-	var client = new net.Socket();
-	client.connect(destinationPort, '127.0.0.1', function() {
-		client.write('{ "message": "election", "from": "'+currentPort+'" }');
-	});
+	multiMsg(ourPort, 'election');
 
-	client.on('data', function(data) {
-		if(data.toString() == 'ok') {
-			console.log('Server ' +destinationPort+ ' will take over.');
-		} else {
-			console.log('No response from ' + (currentPort+1) + '.');
+	// var destinationPort = ourPort + 1;
+	// var client = new net.Socket();
+	// client.connect(destinationPort, '127.0.0.1', function() {
+	// 	client.write('{ "message": "election", "from": "'+currentPort+'" }');
+	// });
 
-            leaderPort = currentPort;
-            console.log('I\'m the Leader! \n');
-		}
-		client.destroy();
-	});
+	// client.on('data', function(data) {
+	// 	if(data.toString() == 'ok') {
+	// 		console.log('Server ' +destinationPort+ ' will take over.');
+	// 	} else {
+	// 		console.log('No response from ' + (currentPort+1) + '.');
 
-	client.on('error', function(error) {
-		if (error.code === 'ECONNREFUSED') {
-            console.log('ECONNREFUSED. Server running on ' + (currentPort+1) + ' is down.');
+ //            leaderPort = currentPort;
+ //            console.log('I\'m the Leader! \n');
+	// 	}
+	// 	client.destroy();
+	// });
 
-            leaderPort = currentPort;
-            console.log('I\'m the Leader! \n');
-        }
-	});
-};
+	// client.on('error', function(error) {
+	// 	if (error.code === 'ECONNREFUSED') {
+ //            console.log('ECONNREFUSED. Server running on ' + (currentPort+1) + ' is down.');
+
+ //            leaderPort = currentPort;
+ //            console.log('I\'m the Leader! \n');
+ //        }
+	// });
+}
+
+function beLeader() {
+
+}
 
 /**
  * Starts here.
@@ -101,4 +159,9 @@ portscanner.findAPortNotInUse(8081, 3010, '127.0.0.1', function(error, port) {
 	createServer(port);
 	currentPort = port;
 	serverStarted = true;
+});
+
+process.on('SIGINT', function() {
+    console.log("\r\n\r\nBye!");
+    process.exit();
 });
