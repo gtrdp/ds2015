@@ -1,9 +1,5 @@
 /**
  * File that will act as a S1, S2, ...
- * please install:
- * 	- express
- * 	- connect-timeout
- * 	- body-parser
  */
 // global vars
 var portscanner = require('portscanner');
@@ -27,6 +23,9 @@ function multiMsg(from, type) {
 			}
 			break;
 		case 'broadcast':
+			for (i = 1; i < 10; i++) {
+				uniMsg('{"message": "leader", "from": "'+from+'"}', from, (8080+i), 0);	
+			}
 			break;
 		default:
 			break;
@@ -65,6 +64,9 @@ function uniMsg(message, from, to, numberOfLoop) {
 			leaderPort = from;
             console.log('I\'m the Leader! Viva '+from+'! \n');
             counter = 0;
+
+            // send an announcement that I'm the leader
+            multiMsg(from, 'broadcast');
 		}
 	});
 }
@@ -87,7 +89,7 @@ function createServer(portNumber) {
 				startElectionTCP(portNumber);
 			} else if (message == 'leader') {
 				leaderPort = from;
-				console.log('The leader is now' + from);
+				console.log('The leader is now ' + from);
 			} else {
 				console.log(message);
 			}
@@ -114,37 +116,6 @@ function startElectionTCP(ourPort){
 	console.log('Sending election request higher number of port...');
 
 	multiMsg(ourPort, 'election');
-
-	// var destinationPort = ourPort + 1;
-	// var client = new net.Socket();
-	// client.connect(destinationPort, '127.0.0.1', function() {
-	// 	client.write('{ "message": "election", "from": "'+currentPort+'" }');
-	// });
-
-	// client.on('data', function(data) {
-	// 	if(data.toString() == 'ok') {
-	// 		console.log('Server ' +destinationPort+ ' will take over.');
-	// 	} else {
-	// 		console.log('No response from ' + (currentPort+1) + '.');
-
- //            leaderPort = currentPort;
- //            console.log('I\'m the Leader! \n');
-	// 	}
-	// 	client.destroy();
-	// });
-
-	// client.on('error', function(error) {
-	// 	if (error.code === 'ECONNREFUSED') {
- //            console.log('ECONNREFUSED. Server running on ' + (currentPort+1) + ' is down.');
-
- //            leaderPort = currentPort;
- //            console.log('I\'m the Leader! \n');
- //        }
-	// });
-}
-
-function beLeader() {
-
 }
 
 /**
