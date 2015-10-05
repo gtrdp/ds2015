@@ -12,6 +12,9 @@ var server;
 var counter = 0;
 var someoneTakeOver = false;
 
+var fs = require("fs");
+var jsonfile = require('jsonfile');
+
 function multiMsg(from, type) {
 	var numberOfLoop = 8090 - from;
 	counter = 0;
@@ -127,7 +130,11 @@ function createServer(portNumber) {
 
 	console.log('Server is running at http://127.0.0.1:' + portNumber + '\n');
 
+	// start voting for election
 	startElectionTCP(portNumber);
+
+	// start writing database files
+	startDB();
 }
 
 function startElectionTCP(ourPort){
@@ -136,6 +143,33 @@ function startElectionTCP(ourPort){
 
 	leaderPort = 0;
 	multiMsg(ourPort, 'election');
+}
+
+function startDB() {
+	fileName = 'files/' + currentPort + '.json';
+	initialContent = {sugar: 100, milk: 100, bread: 100};
+
+	fs.open(fileName, 'w', function(err, fd) {
+		if (err) {
+		   return console.error(err);
+		}
+		console.log("Database created!");
+	});
+	 
+	jsonfile.writeFile(fileName, initialContent, function (err) {
+	  // console.error(err);
+	})
+}
+
+function deleteDB() {
+	fs.unlink('files/' + currentPort + '.json', function(err, fd) {
+	   if (err) {
+	       return console.error(err);
+	   }
+	   console.log("Database deleted!");
+	   console.log("\r\n\r\nBye!");
+       process.exit();
+	});
 }
 
 /**
@@ -147,12 +181,12 @@ console.log('Scan available port...');
 
 portscanner.findAPortNotInUse(8081, 3010, '127.0.0.1', function(error, port) {
 	console.log('Port ' + port + ' is open.');
-	createServer(port);
+
 	currentPort = port;
+	createServer(currentPort);
 	serverStarted = true;
 });
 
 process.on('SIGINT', function() {
-    console.log("\r\n\r\nBye!");
-    process.exit();
+	deleteDB();
 });
