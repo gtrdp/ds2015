@@ -14,17 +14,21 @@ var someoneTakeOver = false;
 
 function multiMsg(from, type) {
 	var numberOfLoop = 8090 - from;
+	counter = 0;
 
+	// console.log('numberOfLoop ' + numberOfLoop)
 	switch(type) {
 		case 'election':
 			var i = 1;
 			for (i = 1; i < numberOfLoop; i++) {
-				uniMsg('{"message": "election", "from": "'+from+'"}', from, (from+i), numberOfLoop);	
+				uniMsg('{"message": "election", "from": "'+from+'"}', from, (from+i), numberOfLoop, 'election');	
 			}
 			break;
 		case 'broadcast':
+			console.log('Sending announcement to all processes')
+
 			for (i = 1; i < 10; i++) {
-				uniMsg('{"message": "leader", "from": "'+from+'"}', from, (8080+i), 0);	
+				uniMsg('{"message": "leader", "from": "'+from+'"}', from, (8080+i), 0, 'broadcast');	
 			}
 			break;
 		default:
@@ -32,7 +36,7 @@ function multiMsg(from, type) {
 	}
 }
 
-function uniMsg(message, from, to, numberOfLoop) {
+function uniMsg(message, from, to, numberOfLoop, type) {
 	var client = new net.Socket();
 
 	client.connect(to, '127.0.0.1', function() {
@@ -40,33 +44,46 @@ function uniMsg(message, from, to, numberOfLoop) {
 	});
 
 	client.on('data', function(data) {
-		if(data.toString() == 'ok') {
+		if(data.toString().substring(0,2) == 'ok') {
 			console.log('Server ' +to+ ' will take over election.');
 			someoneTakeOver = true;
 		} else {
-			console.log('No response from ' + to + '.');
+			// console.log('No response from ' + to + '.');
 
-            leaderPort = currentPort;
-            console.log('I\'m the Leader! \n');
+            // leaderPort = currentPort;
+            // console.log('I\'m the Leader! \n');
+             
+            // console.log(data.toString())
+            counter++;
 		}
 		client.destroy();
 	});
 
 	client.on('error', function(error) {
 		if (error.code === 'ECONNREFUSED') {
-            console.log('Server ' + to + ' is down.');
-            counter++;
+			counter++;
+            // console.log('Server ' + to + ' is down. Counter: ' + counter);
+        }else if (error.code === 'ECONNRESET'){
+        	counter++;
+            // console.log('Server ' + to + ' is down. Counter: ' + counter);
+        }else{
+        	console.log(error);
         }
 	});
 
 	client.on('close', function() {
 		if(counter == (numberOfLoop - 1) && !someoneTakeOver && leaderPort == 0) {
 			leaderPort = from;
+			
+			// console.log(counter +' ' + someoneTakeOver + ' ' + leaderPort)
+			console.log('No body responded.');
             console.log('I\'m the Leader! Viva '+from+'! \n');
-            counter = 0;
 
+            counter = 0;
             // send an announcement that I'm the leader
             multiMsg(from, 'broadcast');
+		}else if (type = 'broadcast' && counter == 9) {
+			counter = 0;
 		}
 	});
 }
@@ -74,6 +91,7 @@ function uniMsg(message, from, to, numberOfLoop) {
 function createServer(portNumber) {
 	server = net.createServer(function(socket) {
 		socket.on('data', function(data) {
+			// The input is not always JSON, please make sure that it can detects it
 			var JSONData = JSON.parse(data.toString());
 
 			var message = JSONData.message;
@@ -82,14 +100,15 @@ function createServer(portNumber) {
 			if (message == 'ok') {
 				console.log('got a response');
 			} else if (message == 'election') {
-				console.log('Got a election request from ' + from);
+				console.log('\nGot a election request from ' + from);
 				socket.write('ok');
 
 				leaderPort = 0;
 				startElectionTCP(portNumber);
 			} else if (message == 'leader') {
 				leaderPort = from;
-				console.log('The leader is now ' + from);
+				// console.log(from);
+				console.log('Announcement: The leader is now ' + from);
 			} else {
 				console.log(message);
 			}
@@ -100,7 +119,7 @@ function createServer(portNumber) {
 		});
 
 		socket.on('error', function(e) {
-			console.log('error ', e);
+			// console.log('error ', e);
 		});
 
 		socket.pipe(socket);
@@ -113,8 +132,9 @@ function createServer(portNumber) {
 
 function startElectionTCP(ourPort){
 	console.log('Initiating election...');
-	console.log('Sending election request higher number of port...');
+	console.log('Sending election request to all higher number of port...');
 
+	leaderPort = 0;
 	multiMsg(ourPort, 'election');
 }
 
