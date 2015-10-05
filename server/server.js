@@ -74,6 +74,7 @@ function uniMsg(message, from, to, numberOfLoop) {
 function createServer(portNumber) {
 	server = net.createServer(function(socket) {
 		socket.on('data', function(data) {
+			console.log(socket.remotePort);
 			var JSONData = JSON.parse(data.toString());
 
 			var message = JSONData.message;
