@@ -129,11 +129,12 @@ function createServer(portNumber) {
 				// request resource message
 				console.log('\nReceived request of ' + JSONData.amount + ' ' + JSONData.resource);
 				socket.write(getResource(JSONData.resource, JSONData.amount));
-			} else if (message = 'sync') {
+			} else if (message = 'sync' && from != currentPort) {
 				// database syncronization
-				
+				console.log('Get database sync');
+				jsonfile.writeFileSync(fileName, JSONData.content);
 			} else {
-				console.log(message);
+				console.log(data.toString());
 			}
 		});
 
@@ -170,8 +171,7 @@ function getResource(resource, amount) {
 		message = {message: "success", detail: amount + " " + resource + " from " + currentPort};
 
 		// sync
-		console.log('Syncing the database.');
-		multiMsg(currentPort, 'sync', value);
+		multiMsg(currentPort, 'sync', JSON.stringify(value));
 	} else {
 		console.log('The request is not processed. There is not enough ' + resource + '.');
 		message = {message: "failed", detail: "There is no " + amount + " " + resource + " from " + currentPort};
