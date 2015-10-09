@@ -106,7 +106,7 @@ function createServer(portNumber) {
 	server = net.createServer(function(socket) {
 		socket.on('data', function(data) {
 			// console.log(socket.remotePort);
-
+			// 
 			// The input is not always JSON, please make sure that it can detects it
 			var JSONData = JSON.parse(data.toString());
 
