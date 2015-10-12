@@ -35,6 +35,10 @@ function multiMsg(from, type, content) {
 			for (i = 1; i < 10; i++) {
 				uniMsg('{"message": "leader", "from": "'+from+'"}', from, (8080+i), 0, 'broadcast');	
 			}
+
+			// also sends to LS
+			tellLS('{"message": "leader", "from": "'+from+'"}', 8080);
+			tellLS('{"message": "leader", "from": "'+from+'"}', 8079);
 			break;
 		case 'sync':
 			console.log('Syncing the database.')
@@ -59,7 +63,7 @@ function uniMsg(message, from, to, numberOfLoop, type) {
 		if(data.toString().substring(0,2) == 'ok') {
 			console.log('Server ' +to+ ' will take over election.');
 			someoneTakeOver = true;
-		} else if(data.toString().substring(0,2) == 'synced') {
+		} else if(data.toString().substring(0,6) == 'synced') {
 			console.log('Server ' +to+ ' has synced the database.');
 		} else {
 			// console.log('No response from ' + to + '.');
@@ -99,6 +103,32 @@ function uniMsg(message, from, to, numberOfLoop, type) {
 		}else if (type = 'broadcast' && counter == 9) {
 			counter = 0;
 		}
+	});
+}
+
+function tellLS(message, to) {
+	var client = new net.Socket();
+
+	client.connect(to, '127.0.0.1', function() {
+		client.write(message);
+	});
+
+	client.on('data', function(data) {
+		client.destroy();
+	});
+
+	client.on('error', function(error) {
+		if (error.code === 'ECONNREFUSED') {
+            console.log('LS ' + to + ' is down.');
+        }else if (error.code === 'ECONNRESET'){
+            console.log('LS ' + to + ' is down.');
+        }else{
+        	console.log(error);
+        }
+	});
+
+	client.on('close', function() {
+		
 	});
 }
 

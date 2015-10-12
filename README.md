@@ -12,3 +12,4 @@ Distributed Inventory Systems for Retail Shops
 - Fully working LS for LS-Server connection.
 - Detects when the leader goes down.
 - Detect if the resource is not on the list.
+- Reject any incoming request if there is no server running.
