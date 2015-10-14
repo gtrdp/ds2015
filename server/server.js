@@ -153,17 +153,18 @@ function createServer(portNumber) {
 				startElectionTCP(portNumber);
 			} else if (message == 'leader') {
 				leaderPort = from;
-				// console.log(from);
+				someoneTakeOver = false;
+				
 				console.log('Announcement: The leader is now ' + from);
 			} else if (message == 'request' && (from == 8080 || from == 8079)){
 				// request resource message
 				console.log('\nReceived request of ' + JSONData.amount + ' ' + JSONData.resource);
 				socket.write(getResource(JSONData.resource, JSONData.amount));
-			} else if (message = 'sync' && from != currentPort) {
+			} else if (message == 'sync' && from != currentPort) {
 				// database syncronization
 				console.log('Get database sync');
 				jsonfile.writeFileSync(fileName, JSONData.content);
-			} else {
+			} else if (message != 'sync') {
 				console.log(data.toString());
 			}
 		});

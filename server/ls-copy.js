@@ -15,6 +15,9 @@ var returnMessage = '';
 
 var finished = false;
 
+var waitingForElection = false;
+var requestedResource = {resource: '', amount: ''};
+
 // var sequence = Futures.sequence();
 
 function multiMsg(type) {
@@ -63,13 +66,17 @@ function uniMsg(message, from, to, numberOfLoop, type) {
 
 	client.on('close', function() {
 		if(counter == (numberOfLoop - 1) && !someoneTakeOver && leaderPort == 0) {
-			leaderPort = from;
-			
-			// console.log(counter +' ' + someoneTakeOver + ' ' + leaderPort)
 			console.log('No server responded.');
             console.log('All servers are down?\n');
 
+            // check if the ls is currrently waiting for election result
+            if (waitingForElection) {
+            	mainSocket.write('Sorry all servers went down.');
+            	waitingForElection = false;
+            }
+
             counter = 0;
+            leaderPort = 0;
 		}else if (type = 'broadcast' && counter == 9) {
 			counter = 0;
 		}
@@ -91,39 +98,34 @@ function createServer(portNumber) {
 				leaderPort = from;
 				// console.log(from);
 				console.log('Announcement: The leader is now ' + from);
-				leaderPort = from;
+				someoneTakeOver = false;
+
+				if (waitingForElection) {
+					// the new leader is now known
+					waitingForElection = false;
+					requestResource(requestedResource.resource, requestedResource.amount);
+				}
 			} else if (message == 'request'){
-				// tell the leader that the client need something
-				console.log('Someone requesting something.')
+				console.log('Someone requesting something.');
 
-				var client = new net.Socket();
-
-				client.connect(leaderPort, '127.0.0.1', function() {
-					client.write(JSON.stringify({message: "request", from: currentPort, resource: "sugar", amount: 50}));
-				});
-
-				client.on('data', function(data) {
-					returnMessage = data.toString();
-					finished = true;
-
-					console.log('It\'s now finished: ' + data.toString());
-					mainSocket.write(returnMessage);
-				});
-
-				client.on('error', function(error) {
-		        	console.log(error);
-				});
-
-				client.on('close', function() {
-				});
-
+				// check whether there is a server running or not
+				if (leaderPort == 0) {
+					console.log('No server running.');
+					socket.write('No server running.');
+				} else if (JSONData.resource == 'sugar' || JSONData.resource == 'salt' || JSONData.resource == 'milk') {
+					requestResource(JSONData.resource, JSONData.amount);
+				} else {
+					// client requests something that is not on the resource list
+					console.log('Request rejected. No matching resources.');
+					socket.write('Sorry, you requested something that we do not have.');
+				}
 			} else {
 				console.log(message);
 			}
 		});
 
 		socket.on('close', function() {
-			console.log('Close the connection');
+			// console.log('Close the connection');
 		});
 
 		socket.on('error', function(e) {
@@ -138,21 +140,45 @@ function createServer(portNumber) {
 	startElectionTCP(currentPort);
 }
 
-function someCallback(message) {
-	// console.log('some callback ' + returnMessage);
-	mainSocket.write('hmmmmm' + returnMessage);
-}
-
-function waitForServer(){
-
-}
-
 function startElectionTCP(ourPort){
 	console.log('Initiating election...');
 	console.log('Sending election request to all servers...');
 
 	leaderPort = 0;
 	multiMsg('election');
+}
+
+function requestResource(resources, amounts) {
+	// tell the leader that the client need something
+	var client = new net.Socket();
+
+	client.connect(leaderPort, '127.0.0.1', function() {
+		client.write(JSON.stringify({message: "request", from: currentPort, resource: resources, amount: amounts}));
+	});
+
+	client.on('data', function(data) {
+		returnMessage = data.toString();
+		finished = true;
+
+		// console.log('It\'s now finished: ' + data.toString());
+		mainSocket.write(returnMessage);
+	});
+
+	client.on('error', function(error) {
+    	console.log('The leader ('+leaderPort+') went down.\n');
+    	
+    	// save the info to global vars
+    	requestedResource.resource = resources;
+    	requestedResource.amount = amounts;
+
+    	// initiate election
+    	waitingForElection = true;
+    	startElectionTCP(currentPort);
+	});
+
+	client.on('close', function() {
+		console.log('Requesting connection closed.');
+	});
 }
 
 /**
