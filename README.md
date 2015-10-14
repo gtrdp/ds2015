@@ -14,3 +14,8 @@ Distributed Inventory Systems for Retail Shops
 
 **Architecture**
 - LS is the main hub, for the dynamic discovery of hosts.
+
+## Terminal Testing
+Use this command to test the code:
+
+		echo "{\"message\": \"request\", \"resource\": \"sugar\", \"amount\": 10}" | nc 127.0.0.1 8079 {"message": "request", "resource": "sugar", "amount": 10}
