@@ -94,11 +94,8 @@ function uniMsg(message, from, to, numberOfLoop, type) {
 function createServer(portNumber) {
 	server = net.createServer(function(socket) {
 		socket.on('data', function(data) {
-<<<<<<< HEAD
-			console.log(socket.remotePort);
-=======
-			// The input is not always JSON, please make sure that it can detects it
->>>>>>> c381bd6730f69ca4ecefd7da58a2313ab9fc2e11
+
+
 			var JSONData = JSON.parse(data.toString());
 
 			var message = JSONData.message;
