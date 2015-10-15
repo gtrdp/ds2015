@@ -2,6 +2,8 @@
 Distributed Inventory Systems for Retail Shops
 
 ## To-do
+**General**
+- Test everyting.
 
 **Server**
 - Sync after get new leader. But make sure who has the lates copy. The latest copy will always win.
@@ -11,6 +13,10 @@ Distributed Inventory Systems for Retail Shops
 - Detects when the leader goes down. [OK]
 - Detect if the resource is not on the list. [OK]
 - Reject any incoming request if there is no server running. [OK]
+
+**Client**
+- Client is able to switch to other LS if the assigned LS is down.
+- Client is able to detect that there is no LS running up.
 
 **Architecture**
 - LS is the main hub, for the dynamic discovery of hosts.
