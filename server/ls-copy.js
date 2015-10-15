@@ -119,7 +119,11 @@ function createServer(portNumber) {
 					console.log('Request rejected. No matching resources.');
 					socket.write('Sorry, you requested something that we do not have.');
 				}
-			} else {
+			} else if (message == 'discover') {
+				if (socket.remotePort % 2 == currentPort % 2) {
+					socket.write(JSON.stringify({message: "yes", from: currentPort}));
+                }
+            } else {
 				console.log(message);
 			}
 		});

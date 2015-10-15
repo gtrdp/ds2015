@@ -15,6 +15,7 @@ Distributed Inventory Systems for Retail Shops
 - Reject any incoming request if there is no server running. [OK]
 
 **Client**
+- Client is controllable using keyboard input.
 - Client is able to switch to other LS if the assigned LS is down.
 - Client is able to detect that there is no LS running up.
 

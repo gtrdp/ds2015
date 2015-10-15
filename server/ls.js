@@ -25,19 +25,16 @@ function createServer(portNumber) {
 				leaderPort = from;
 				// console.log(from);
 				console.log('Announcement: The leader is now ' + from);
-			} else if (message == 'discover'){
-				if (socket.remotePort %2 ==0)
-					 socket.write('{"message": "yes", "from": "8080"}');
-				
-		     socket.write('{"message": "yes"}');
+			} else if (message == 'discover') {
+				if (socket.remotePort %2 == 0) {
+					socket.write('{"message": "yes", "from": "8080"}');
+					socket.write('{"message": "yes"}');
                 }
-                else if (message == 'request'){
-		     socket.write('{"message": "success", "details": "10 sugaar from S3"}');
-                }
-			else {
+            } else if (message == 'request') {
+		    	socket.write('{"message": "success", "details": "10 sugaar from S3"}');
+            } else {
 				console.log(message);
 			}
-
 		});
 
 
