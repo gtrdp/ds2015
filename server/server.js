@@ -162,7 +162,9 @@ function createServer(portNumber) {
 				socket.write(getResource(JSONData.resource, JSONData.amount));
 			} else if (message == 'sync' && from != currentPort) {
 				// database syncronization
-				console.log('Get database sync');
+				console.log('Get database sync message.');
+
+				// check vector clock here
 				jsonfile.writeFileSync(fileName, JSONData.content);
 			} else if (message != 'sync') {
 				console.log(data.toString());
@@ -221,7 +223,7 @@ function startElectionTCP(ourPort){
 
 function startDB() {
 	fileName = 'files/' + currentPort + '.json';
-	initialContent = {sugar: 100, milk: 100, salt: 100};
+	initialContent = {vectorClock: 0, sugar: 100, milk: 100, salt: 100};
 
 	fs.open(fileName, 'w', function(err, fd) {
 		if (err) {
