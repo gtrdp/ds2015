@@ -111,16 +111,16 @@ function createServer(portNumber) {
 				// check whether there is a server running or not
 				if (leaderPort == 0) {
 					console.log('No server running.');
-					socket.write('No server running.');
+					socket.write(JSON.stringify({message: "failed", details: "No servers running."}));
 				} else if (JSONData.resource == 'sugar' || JSONData.resource == 'salt' || JSONData.resource == 'milk') {
 					requestResource(JSONData.resource, JSONData.amount);
 				} else {
 					// client requests something that is not on the resource list
 					console.log('Request rejected. No matching resources.');
-					socket.write('Sorry, you requested something that we do not have.');
+					socket.write(JSON.stringify({message: "failed", details: "Sorry, you requested something that we do not have."}));
 				}
 			} else if (message == 'discover') {
-				if (socket.remotePort % 2 == currentPort % 2) {
+				if (from % 2 == currentPort % 2) {
 					socket.write(JSON.stringify({message: "yes", from: currentPort}));
                 }
             } else {
@@ -181,7 +181,7 @@ function requestResource(resources, amounts) {
 	});
 
 	client.on('close', function() {
-		console.log('Requesting connection closed.');
+		// console.log('Requesting connection closed.');
 	});
 }
 

@@ -1,35 +1,127 @@
+// Global vars
 var net = require('net');
+var curLS = 0;
+var hostIP = '127.0.0.1';
+var LSPort = [8079, 8080];
+var currentLS = -1;
+var clientID = Math.floor((Math.random() * 100) + 1);
+var onProcess = false;
 
-var client = new net.Socket(); // load balancer port id 8080
-client.connect(8080, '127.0.0.1', function() {
-	console.log('Connected');
-	client.write('{"message":"discover"}');
-});
+var buffer = {message: "request", from: clientID};
 
-client.on('data', function(data) {
-	console.log('Received: ' + data);
-	var JSONData = JSON.parse(data.toString());
-	var message = JSONData.message;
-	var from = JSONData.from;
-	var resource = JSONData.resource;
-	var amount = JSONData.amount;
+function sendMessage(port, message) {
+	var client = new net.Socket();
 
-	if (message == 'yes'){
-		if (from == 8079){
-			console.log('Announcement:Local Server 1 is connected' + from)
-		} else if (from == 8080){
-			console.log('Announcement:Local Server 2 is connected' + from)
+	client.connect(port, hostIP, function() {
+		client.write(JSON.stringify(message));
+	});
+
+	client.on('data', function(data) {
+		// console.log('Received: ' + data);
+		
+		// check for duplicated value
+		data = data.toString();
+		n = data.indexOf("{", 2);
+		if(n > 0)
+			data = data.substring(0,n);
+
+		JSONData = JSON.parse(data);
+		message = JSONData.message;
+		from = JSONData.from;
+		resource = JSONData.resource;
+		amount = JSONData.amount;
+
+		if (message == 'yes'){
+			if (from == LSPort[0]){
+				console.log('Announcement: Connected to LS1!');
+				currentLS = 0;
+			} else if (from == LSPort[1]){
+				console.log('Announcement: Connected to LS2!');
+				currentLS = 1;
+			}
+
+			handleKeyboardInput();
+		} else if (message == 'success') {
+			console.log('\n' + JSONData.details);
+
+			handleKeyboardInput();
+		} else if (message == 'failed') {
+			console.log('\n' + JSONData.details);
+			
+			handleKeyboardInput();
 		}
-	} else {
- 		console.log(JSONData)
- 	}
-	
-	client.destroy(); // kill client after server's response
-});
+		// else {
+	 // 		console.log(JSONData)
+	 // 	}
+	});
 
-client.on('close', function() {
-	console.log('Connection closed');
-});
-client.on('error',function(e){
-	console.log('error',e);
-});
+	client.on('close', function() {
+		// console.log('Connection closed');
+	});
+	client.on('error',function(e){
+		// console.log('error',e);
+		lsnumber = (port == LSPort[0])? 1:2;
+		console.log('LS '+lsnumber+' is down.');
+
+		// check if the current LS is down
+	});
+}
+
+function connectToLS() {
+	console.log('Connecting to LS...');
+
+	sendMessage(LSPort[0], {message: "discover", from: clientID});
+	sendMessage(LSPort[1], {message: "discover", from: clientID});
+}
+
+function handleKeyboardInput() {
+	printCommand();
+
+	process.stdin.setEncoding('utf8');
+
+	process.stdin.on('readable', function() {
+		var chunk = process.stdin.read();
+		if (chunk !== null && (chunk == 's\n' || chunk == 'm\n' || chunk == 't\n')) {
+			switch(chunk) {
+				case 's\n':
+					buffer.resource = 'sugar';
+					break;
+				case 'm\n':
+					buffer.resource = 'milk';
+					break;
+				case 't\n':
+					buffer.resource = 'salt';
+					break;
+				default:
+					break;
+			}
+
+			console.log('\nPlease enter the amount:');
+		} else if(chunk !== null && Number(chunk)) {
+			buffer.amount = chunk.substring(0, chunk.length - 1);
+			
+			sendMessage(LSPort[currentLS], buffer);
+
+			// console.log(buffer);
+		}
+	});
+
+	process.stdin.on('end', function() {
+	  process.stdout.write('end');
+	});
+}
+
+function printCommand() {
+	console.log('\nAvailable commands:');
+	console.log('s: request for sugar.');
+	console.log('m: request for milk.');
+	console.log('t: request for salt.');
+	console.log('Please select one and press enter.');
+}
+
+
+/**
+ * Starts here
+ */
+connectToLS();
+

@@ -201,13 +201,13 @@ function getResource(resource, amount) {
 		jsonfile.writeFileSync(fileName, value);
 
 		console.log('The request has successfully processed.');
-		message = {message: "success", detail: amount + " " + resource + " from " + currentPort};
+		message = {message: "success", details: amount + " " + resource + " from " + currentPort};
 
 		// sync
 		multiMsg(currentPort, 'sync', JSON.stringify(value));
 	} else {
 		console.log('The request is not processed. There is not enough ' + resource + '.');
-		message = {message: "failed", detail: "There is no " + amount + " " + resource + " from " + currentPort};
+		message = {message: "failed", details: "There is no " + amount + " " + resource + " from " + currentPort};
 	}
 
 	return JSON.stringify(message);
