@@ -2,6 +2,9 @@
 Distributed Inventory Systems for Retail Shops
 
 ## To-do
+**Bugs**
+
+
 **General**
 - Test everyting.
 - What happens if in the middle of the transaction LS goes down.
