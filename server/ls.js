@@ -85,8 +85,6 @@ function uniMsg(message, from, to, numberOfLoop, type) {
 
 function createServer(portNumber) {
 	server = net.createServer(function(socket) {
-		mainSocket = socket;
-
 		socket.on('data', function(data) {
 			// The input is not always JSON, please make sure that it can detects it
 			var JSONData = JSON.parse(data.toString());
@@ -103,9 +101,13 @@ function createServer(portNumber) {
 				if (waitingForElection) {
 					// the new leader is now known
 					waitingForElection = false;
+
+					console.log('\nForwarding the postponed request.');
+					socket.write(JSON.stringify({"message":"success","details":"10 milk from 8081"}));
 					requestResource(requestedResource.resource, requestedResource.amount);
 				}
 			} else if (message == 'request'){
+				mainSocket = socket;
 				console.log('Someone requesting something.');
 
 				// check whether there is a server running or not
@@ -129,7 +131,7 @@ function createServer(portNumber) {
 		});
 
 		socket.on('close', function() {
-			// console.log('Close the connection');
+			// console.log('Close the connection.');
 		});
 
 		socket.on('error', function(e) {
@@ -162,9 +164,18 @@ function requestResource(resources, amounts) {
 
 	client.on('data', function(data) {
 		returnMessage = data.toString();
-		finished = true;
+		// console.log('Before: ' + returnMessage);
 
-		// console.log('It\'s now finished: ' + data.toString());
+		// check if the data valid or not
+		// n = returnMessage.indexOf("{", 2);
+		// if(n > 0)
+		// 	returnMessage = returnMessage.substring(0,n);
+
+		// if(JSON.parse(returnMessage).message == 'request')
+		// 	returnMessage = '';
+
+		// console.log('After: ' + returnMessage);
+
 		mainSocket.write(returnMessage);
 	});
 
@@ -177,6 +188,7 @@ function requestResource(resources, amounts) {
 
     	// initiate election
     	waitingForElection = true;
+    	// client.destroy();
     	startElectionTCP(currentPort);
 	});
 

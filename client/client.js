@@ -17,10 +17,10 @@ function sendMessage(port, message) {
 	});
 
 	client.on('data', function(data) {
-		// console.log('Received: ' + data);
 		
 		// check for duplicated value
 		data = data.toString();
+
 		n = data.indexOf("{", 2);
 		if(n > 0)
 			data = data.substring(0,n);
@@ -37,11 +37,13 @@ function sendMessage(port, message) {
 				
 				currentLS = 0;
 				waiting = false;
+				client.destroy();
 			} else if (from == LSPort[1]){
 				console.log('Announcement: Connected to LS2!');
 				
 				currentLS = 1;
 				waiting = false;
+				client.destroy();
 			}
 
 			handleKeyboardInput();
@@ -49,16 +51,19 @@ function sendMessage(port, message) {
 			console.log('\n' + JSONData.details);
 			waiting = false;
 
+			client.destroy();
 			handleKeyboardInput();
 		} else if (message == 'failed') {
 			console.log('\n' + JSONData.details);
 			waiting = false;
 			
+			client.destroy();
 			handleKeyboardInput();
 		}
-		// else {
-	 // 		console.log(JSONData)
-	 // 	}
+		else {
+			// console.log('else:');
+	 	// 	console.log(JSONData);
+	 	}
 	});
 
 	client.on('close', function() {
@@ -87,7 +92,7 @@ function sendMessage(port, message) {
 
 			connectToLS();
 		} else if (waiting) {
-			
+
 		}
 	});
 }

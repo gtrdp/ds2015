@@ -164,8 +164,14 @@ function createServer(portNumber) {
 				// database syncronization
 				console.log('Get database sync message.');
 
+				value = jsonfile.readFileSync(fileName);
+
 				// check vector clock here
-				jsonfile.writeFileSync(fileName, JSONData.content);
+				if(value.vectorClock > JSONData.content.vectorClock) {
+					console.log('Reject the sync');
+				} else {
+					jsonfile.writeFileSync(fileName, JSONData.content);
+				}
 			} else if (message != 'sync') {
 				console.log(data.toString());
 			}
@@ -197,10 +203,11 @@ function getResource(resource, amount) {
 
 	if (value[resource] >= amount) {
 		value[resource] = value[resource] - amount;
+		value.vectorClock = value.vectorClock + 1;
 		 
 		jsonfile.writeFileSync(fileName, value);
 
-		console.log('The request has successfully processed.');
+		console.log('The request has successfully been processed.');
 		message = {message: "success", details: amount + " " + resource + " from " + currentPort};
 
 		// sync
