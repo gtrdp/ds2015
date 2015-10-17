@@ -21,9 +21,9 @@ Distributed Inventory Systems for Retail Shops
 
 **Client**
 - Client is controllable using keyboard input. [OK]
-- Client is able to switch to other LS if the assigned LS is down. 
+- Client is able to switch to other LS if the assigned LS is down. [OK]
 - Client is able to detect that there is no LS running up. [OK]
-- Client is able to handle if in the middle of transaction, ls goes down.
+- Client is able to handle if in the middle of transaction, ls goes down. [**Need Testing**]
 
 **Architecture**
 - LS is the main hub, for the dynamic discovery of hosts.

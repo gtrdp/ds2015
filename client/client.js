@@ -1,6 +1,5 @@
 // Global vars
 var net = require('net');
-var curLS = 0;
 var hostIP = '127.0.0.1';
 var LSPort = [8079, 8080];
 var currentLS = -1;
@@ -8,6 +7,7 @@ var clientID = Math.floor((Math.random() * 100) + 1);
 var onProcess = false;
 
 var buffer = {message: "request", from: clientID};
+var waiting = false;
 
 function sendMessage(port, message) {
 	var client = new net.Socket();
@@ -34,19 +34,25 @@ function sendMessage(port, message) {
 		if (message == 'yes'){
 			if (from == LSPort[0]){
 				console.log('Announcement: Connected to LS1!');
+				
 				currentLS = 0;
+				waiting = false;
 			} else if (from == LSPort[1]){
 				console.log('Announcement: Connected to LS2!');
+				
 				currentLS = 1;
+				waiting = false;
 			}
 
 			handleKeyboardInput();
 		} else if (message == 'success') {
 			console.log('\n' + JSONData.details);
+			waiting = false;
 
 			handleKeyboardInput();
 		} else if (message == 'failed') {
 			console.log('\n' + JSONData.details);
+			waiting = false;
 			
 			handleKeyboardInput();
 		}
@@ -64,6 +70,25 @@ function sendMessage(port, message) {
 		console.log('LS '+lsnumber+' is down.');
 
 		// check if the current LS is down
+		if(e.code == 'ECONNREFUSED' && waiting) {
+			if (currentLS != -1) {
+				console.log('Switching to other LS.\n');
+				currentLS = (currentLS == 0)? 1:0 ;
+
+				sendMessage(LSPort[currentLS], message);
+			}
+		}
+	});
+
+	client.setTimeout(5000, function(){
+		if(currentLS == -1) {
+			console.log('No response from desired LS. Try again.');
+			clientID = clientID + 1;
+
+			connectToLS();
+		} else if (waiting) {
+			
+		}
 	});
 }
 
@@ -100,9 +125,8 @@ function handleKeyboardInput() {
 		} else if(chunk !== null && Number(chunk)) {
 			buffer.amount = chunk.substring(0, chunk.length - 1);
 			
+			waiting = true;
 			sendMessage(LSPort[currentLS], buffer);
-
-			// console.log(buffer);
 		}
 	});
 
