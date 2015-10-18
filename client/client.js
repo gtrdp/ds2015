@@ -6,7 +6,7 @@ var currentLS = -1;
 var clientID = Math.floor((Math.random() * 100) + 1);
 var onProcess = false;
 
-var buffer = {message: "request", from: clientID};
+var buffer = {message: "request", from: clientID, resource: '', amount: 0};
 var waiting = false;
 
 function sendMessage(port, message) {
@@ -52,13 +52,13 @@ function sendMessage(port, message) {
 			waiting = false;
 
 			client.destroy();
-			handleKeyboardInput();
+			printCommand();
 		} else if (message == 'failed') {
 			console.log('\n' + JSONData.details);
 			waiting = false;
 			
 			client.destroy();
-			handleKeyboardInput();
+			printCommand();
 		}
 		else {
 			// console.log('else:');
@@ -152,5 +152,6 @@ function printCommand() {
 /**
  * Starts here
  */
+process.setMaxListeners(0);
 connectToLS();
 

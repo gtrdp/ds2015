@@ -71,7 +71,7 @@ function uniMsg(message, from, to, numberOfLoop, type) {
 
             // check if the ls is currrently waiting for election result
             if (waitingForElection) {
-            	mainSocket.write('Sorry all servers went down.');
+            	mainSocket.write(JSON.stringify({message: "failed", details: "Sorry, all servers went down."}));
             	waitingForElection = false;
             }
 

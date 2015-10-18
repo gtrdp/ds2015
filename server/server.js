@@ -16,6 +16,10 @@ var fs = require("fs");
 var jsonfile = require('jsonfile');
 var fileName = '';
 
+var buffer = null;
+var mainSocket = null;
+var temp = {amount: 0, resource: ''};
+
 function multiMsg(from, type, content) {
 	var numberOfLoop = 8090 - from;
 	content = (typeof content === 'undefined') ? '' : content;
@@ -44,7 +48,14 @@ function multiMsg(from, type, content) {
 			console.log('Syncing the database.')
 
 			for (i = 1; i < 10; i++) {
-				uniMsg('{"message": "sync", "from": "'+from+'", "content": '+content+'}', from, (8080+i), 0, 'broadcast');
+				uniMsg('{"message": "sync", "from": "'+from+'", "content": '+content+'}', from, (8080+i), 0, 'syncBroadcast');
+			}
+			break;
+		case 'syncCoordinate':
+			console.log('Coordinating to sync the database.')
+
+			for (i = 1; i < 10; i++) {
+				uniMsg('{"message": "syncCoordinate", "from": "'+from+'"}', from, (8080+i), 0, 'syncCoordinate');
 			}
 			break;
 		default:
@@ -65,6 +76,9 @@ function uniMsg(message, from, to, numberOfLoop, type) {
 			someoneTakeOver = true;
 		} else if(data.toString().substring(0,6) == 'synced') {
 			console.log('Server ' +to+ ' has synced the database.');
+		} else if(data.toString().substring(0,6) == 'reject') {
+			console.log('Write cancelled. Server ' +to+ ' has something to write.');
+			mainSocket.write(JSON.stringify({message: "failed", details: "Server is busy, please try again later."}));
 		} else {
 			// console.log('No response from ' + to + '.');
 
@@ -100,8 +114,25 @@ function uniMsg(message, from, to, numberOfLoop, type) {
             counter = 0;
             // send an announcement that I'm the leader
             multiMsg(from, 'broadcast');
-		}else if (type = 'broadcast' && counter == 9) {
+		}else if (type == 'broadcast' && counter == 9) {
 			counter = 0;
+
+			// sync after announcing I'm now the leader
+			var value = jsonfile.readFileSync(fileName);
+			multiMsg(currentPort, 'sync', JSON.stringify(value));
+		} else if (type == 'syncBroadcast' && counter == 9) {
+			counter = 0;
+			buffer = null;
+		} else if (type == 'syncCoordinate' && counter == 9) {
+			counter = 0;
+
+			// write the file to database
+			jsonfile.writeFileSync(fileName, buffer);
+			console.log('The request has successfully been processed.');
+			mainSocket.write(JSON.stringify({message: "success", details: temp.amount + " " + temp.resource + " from " + currentPort}));
+			
+			// sync to other servers
+			multiMsg(currentPort, 'sync', JSON.stringify(buffer));
 		}
 	});
 }
@@ -159,7 +190,11 @@ function createServer(portNumber) {
 			} else if (message == 'request' && (from == 8080 || from == 8079)){
 				// request resource message
 				console.log('\nReceived request of ' + JSONData.amount + ' ' + JSONData.resource);
-				socket.write(getResource(JSONData.resource, JSONData.amount));
+
+				mainSocket = socket;
+				if(!getResource(JSONData.resource, JSONData.amount)) {
+					socket.write(JSON.stringify({message: "failed", details: "There is no " + JSONData.amount + " " + JSONData.resource + " from " + currentPort}));
+				}
 			} else if (message == 'sync' && from != currentPort) {
 				// database syncronization
 				console.log('Get database sync message.');
@@ -168,11 +203,19 @@ function createServer(portNumber) {
 
 				// check vector clock here
 				if(value.vectorClock > JSONData.content.vectorClock) {
-					console.log('Reject the sync');
+					console.log('My data is newer. Reject the sync.');
+
+					// send the message
+					uniMsg('{"message": "sync", "from": "'+currentPort+'", "content": '+JSON.stringify(value)+'}', currentPort, from, 0, 'unicast');
 				} else {
 					jsonfile.writeFileSync(fileName, JSONData.content);
 				}
-			} else if (message != 'sync') {
+			} else if (message == 'syncCoordinate' && from != currentPort) {
+				if(buffer != null) {
+					console.log(buffer);
+					socket.write('reject');
+				}
+			} else if (message != 'sync' && message != 'syncCoordinate') {
 				console.log(data.toString());
 			}
 		});
@@ -199,25 +242,23 @@ function createServer(portNumber) {
 
 function getResource(resource, amount) {
 	var value = jsonfile.readFileSync(fileName);
-	var message = '';
 
 	if (value[resource] >= amount) {
 		value[resource] = value[resource] - amount;
 		value.vectorClock = value.vectorClock + 1;
-		 
-		jsonfile.writeFileSync(fileName, value);
 
-		console.log('The request has successfully been processed.');
-		message = {message: "success", details: amount + " " + resource + " from " + currentPort};
+		// coordinate-sync
+		buffer = value;
+		temp.amount = amount;
+		temp.resource = resource;
+		multiMsg(currentPort, 'syncCoordinate');
 
-		// sync
-		multiMsg(currentPort, 'sync', JSON.stringify(value));
+		return true;
 	} else {
 		console.log('The request is not processed. There is not enough ' + resource + '.');
-		message = {message: "failed", details: "There is no " + amount + " " + resource + " from " + currentPort};
-	}
 
-	return JSON.stringify(message);
+		return false;
+	}
 }
 
 function startElectionTCP(ourPort){
@@ -265,11 +306,15 @@ function deleteDB() {
 console.log('Scan available port...');
 
 portscanner.findAPortNotInUse(8081, 3010, '127.0.0.1', function(error, port) {
-	console.log('Port ' + port + ' is open.');
+	if(port > 8090) {
+		console.log('No available ports are open.')
+	} else {
+		console.log('Port ' + port + ' is open.');
 
-	currentPort = port;
-	createServer(currentPort);
-	serverStarted = true;
+		currentPort = port;
+		createServer(currentPort);
+		serverStarted = true;
+	}
 });
 
 process.on('SIGINT', function() {
