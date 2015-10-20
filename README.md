@@ -1,6 +1,20 @@
 # ds2015
 Distributed Inventory Systems for Retail Shops
 
+## How to
+To run this system follow these steps:
+1. Go to the server directory and run two LS (the LS will run on port 8079 and 8080):
+		
+		$ node ls.js
+
+2. Run minimum 1 server. The system is able to run max 9 servers ranging from port 8081 to 8090:
+
+		$ node server.js
+
+3. Go to client folder and run the client. Follow the steps on the console.
+
+		$ node client.js
+
 ## To-do
 **Bugs**
 - warning: possible EventEmitter memory leak detected. 11 end listeners added. Use emitter.setMaxListeners() to increase limit. [OK]
