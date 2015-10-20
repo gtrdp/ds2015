@@ -3,6 +3,7 @@ Distributed Inventory Systems for Retail Shops
 
 ## How to
 To run this system follow these steps:
+
 1. Go to the server directory and run two LS (the LS will run on port 8079 and 8080):
 		
 		$ node ls.js
