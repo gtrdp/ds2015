@@ -20,6 +20,8 @@ var buffer = null;
 var mainSocket = null;
 var temp = {amount: 0, resource: ''};
 
+var currentStatus = {leader: 0, list: [], client: 0};
+
 function multiMsg(from, type, content) {
 	var numberOfLoop = 8090 - from;
 	content = (typeof content === 'undefined') ? '' : content;
@@ -145,14 +147,45 @@ function tellLS(message, to) {
 	});
 
 	client.on('data', function(data) {
+		data = data.toString();
+		n = data.indexOf("{", 2);
+		if(n > 0)
+			data = data.substring(0,n);
+
+		// check whether the returned data is JSON
+		n = data.indexOf("{");
+		if(n == 0){
+			currentStatus = JSON.parse(data);
+			leaderPort = currentStatus.leader;
+		}
+
+		console.log('Syncing the database...');
+
+		value = jsonfile.readFileSync(fileName);
+		// send the message
+		uniMsg('{"message": "sync", "from": "'+currentPort+'", "content": '+JSON.stringify(value)+'}', currentPort, leaderPort, 0, 'unicast');
+
+		counter = 0;
 		client.destroy();
 	});
 
 	client.on('error', function(error) {
 		if (error.code === 'ECONNREFUSED') {
             console.log('LS ' + to + ' is down.');
+            counter++;
+
+            if(counter == 2) {
+            	console.log('Both LS are down. Will now shut down.');
+            	process.exit();
+            }
         }else if (error.code === 'ECONNRESET'){
             console.log('LS ' + to + ' is down.');
+            counter++;
+
+            if(counter == 2) {
+            	console.log('Both LS are down. Will now shut down.');
+            	process.exit();
+            }
         }else{
         	console.log(error);
         }
@@ -184,6 +217,7 @@ function createServer(portNumber) {
 				startElectionTCP(portNumber);
 			} else if (message == 'leader') {
 				leaderPort = from;
+				currentStatus.leader = from;
 				someoneTakeOver = false;
 				
 				console.log('Announcement: The leader is now ' + from);
@@ -233,11 +267,16 @@ function createServer(portNumber) {
 
 	console.log('Server is running at http://127.0.0.1:' + portNumber + '\n');
 
-	// start voting for election
-	startElectionTCP(portNumber);
-
 	// start writing database files
 	startDB();
+
+	// start voting for election
+	// startElectionTCP(portNumber);
+	
+	// register to LS
+	console.log('Joining the system. Contacting LS...');
+	tellLS('{"message": "register", "from": "'+currentPort+'"}', 8080);
+	tellLS('{"message": "register", "from": "'+currentPort+'"}', 8079);
 }
 
 function getResource(resource, amount) {

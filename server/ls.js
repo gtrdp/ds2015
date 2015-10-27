@@ -18,6 +18,10 @@ var finished = false;
 var waitingForElection = false;
 var requestedResource = {resource: '', amount: ''};
 
+var currentStatus = {leader: 0, list: [], client: 0};
+
+var sleep = require('sleep');
+
 // var sequence = Futures.sequence();
 
 function multiMsg(type) {
@@ -67,7 +71,7 @@ function uniMsg(message, from, to, numberOfLoop, type) {
 	client.on('close', function() {
 		if(counter == (numberOfLoop - 1) && !someoneTakeOver && leaderPort == 0) {
 			console.log('No server responded.');
-            console.log('All servers are down?\n');
+            console.log('All servers are down!\n');
 
             // check if the ls is currrently waiting for election result
             if (waitingForElection) {
@@ -97,13 +101,14 @@ function createServer(portNumber) {
 				// console.log(from);
 				console.log('Announcement: The leader is now ' + from);
 				someoneTakeOver = false;
+				currentStatus.leader = leaderPort;
 
 				if (waitingForElection) {
 					// the new leader is now known
 					waitingForElection = false;
 
 					console.log('\nForwarding the postponed request.');
-					socket.write(JSON.stringify({"message":"success","details":"10 milk from 8081"}));
+					// socket.write(JSON.stringify({"message":"success","details":"10 milk from 8081"}));
 					requestResource(requestedResource.resource, requestedResource.amount);
 				}
 			} else if (message == 'request'){
@@ -125,6 +130,17 @@ function createServer(portNumber) {
 				if (from % 2 == currentPort % 2) {
 					socket.write(JSON.stringify({message: "yes", from: currentPort}));
                 }
+            } else if (message == 'getStatus') {
+				socket.write(JSON.stringify(currentStatus));
+            } else if (message == 'register') {
+            	console.log('Server ' + from + ' joins the system.');
+            	if (currentStatus.list.indexOf(from) == -1) {
+            		currentStatus.list.push(from);
+            		currentStatus.leader = from;
+            		leaderPort = from;
+            	}
+
+				socket.write(JSON.stringify(currentStatus));
             } else {
 				console.log(message);
 			}
@@ -143,7 +159,65 @@ function createServer(portNumber) {
 
 	console.log('Server is running at http://127.0.0.1:' + portNumber + '\n');
 
-	startElectionTCP(currentPort);
+	// startElectionTCP(currentPort);
+	
+	// get status from other LS
+	getCurrentStatus((currentPort == 8079)? 8080:8079 );
+}
+
+function getCurrentStatus(port) {
+	console.log('Getting current system status from other LS...');
+
+	var client = new net.Socket();
+
+	client.connect(port, '127.0.0.1', function() {
+		client.write(JSON.stringify({message: 'getStatus', from: currentPort}));
+	});
+
+	client.on('data', function(data) {
+		data = data.toString();
+		n = data.indexOf("{", 2);
+		if(n > 0)
+			data = data.substring(0,n);
+
+		currentStatus = JSON.parse(data);
+		console.log(currentStatus.leader);
+		client.destroy();
+	});
+
+	client.on('error', function(error) {
+		if (error.code === 'ECONNREFUSED') {
+			// counter++;
+            // console.log('Server ' + to + ' is down. Counter: ' + counter);
+            console.log('Other LS (' + port + ') is down. Will initiate election instead...\n');
+            startElectionTCP(currentPort);
+        }else if (error.code === 'ECONNRESET'){
+        	// counter++;
+            // console.log('Server ' + to + ' is down. Counter: ' + counter);
+            console.log('Other LS (' + port + ') is down. Will initiate election instead...\n');
+            startElectionTCP(currentPort);
+        }else{
+        	console.log(error);
+        }
+	});
+
+	client.on('close', function() {
+		// if(counter == (numberOfLoop - 1) && !someoneTakeOver && leaderPort == 0) {
+		// 	console.log('No server responded.');
+  //           console.log('All servers are down?\n');
+
+  //           // check if the ls is currrently waiting for election result
+  //           if (waitingForElection) {
+  //           	mainSocket.write(JSON.stringify({message: "failed", details: "Sorry, all servers went down."}));
+  //           	waitingForElection = false;
+  //           }
+
+  //           counter = 0;
+  //           leaderPort = 0;
+		// }else if (type = 'broadcast' && counter == 9) {
+		// 	counter = 0;
+		// }
+	});
 }
 
 function startElectionTCP(ourPort){
@@ -217,6 +291,8 @@ portscanner.findAPortNotInUse(8079, 3010, '127.0.0.1', function(error, port) {
 		serverStarted = true;
 	}
 });
+
+// keep track of running server and other LS every 2 sec
 
 process.on('SIGINT', function() {
 	console.log("\r\n\r\nBye!");
