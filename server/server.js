@@ -96,10 +96,10 @@ function uniMsg(message, from, to, numberOfLoop, type) {
 	client.on('error', function(error) {
 		if (error.code === 'ECONNREFUSED') {
 			counter++;
-            // console.log('Server ' + to + ' is down. Counter: ' + counter);
+            console.log('Server ' + to + ' is down. Counter: ' + counter);
         }else if (error.code === 'ECONNRESET'){
         	counter++;
-            // console.log('Server ' + to + ' is down. Counter: ' + counter);
+            console.log('Server ' + to + ' is down. Counter: ' + counter);
         }else{
         	// console.log(error);
         }
@@ -116,16 +116,16 @@ function uniMsg(message, from, to, numberOfLoop, type) {
             counter = 0;
             // send an announcement that I'm the leader
             multiMsg(from, 'broadcast');
-		}else if (type == 'broadcast' && counter == 9) {
+		}else if (type == 'broadcast' && counter >= 9) {
 			counter = 0;
 
 			// sync after announcing I'm now the leader
 			var value = jsonfile.readFileSync(fileName);
 			multiMsg(currentPort, 'sync', JSON.stringify(value));
-		} else if (type == 'syncBroadcast' && counter == 9) {
+		} else if (type == 'syncBroadcast' && counter >= 9) {
 			counter = 0;
 			buffer = null;
-		} else if (type == 'syncCoordinate' && counter == 9) {
+		} else if (type == 'syncCoordinate' && counter >= 9) {
 			counter = 0;
 
 			// write the file to database

@@ -19,6 +19,7 @@ var waitingForElection = false;
 var requestedResource = {resource: '', amount: ''};
 
 var currentStatus = {leader: 0, list: [], client: 0};
+var numberOfServer = 0;
 
 var sleep = require('sleep');
 
@@ -144,6 +145,7 @@ function createServer(portNumber) {
             		leaderPort = from;
             	}
 
+            	// console.log(currentStatus);
 				socket.write(JSON.stringify(currentStatus));
             } else {
 				console.log(message);
@@ -158,7 +160,7 @@ function createServer(portNumber) {
 			// console.log('error ', e);
 		});
 
-		socket.pipe(socket);
+		// socket.pipe(socket);
 	}).listen(portNumber, '127.0.0.1');
 
 	console.log('Server is running at http://127.0.0.1:' + portNumber + '\n');
@@ -185,7 +187,8 @@ function getCurrentStatus(port) {
 			data = data.substring(0,n);
 
 		currentStatus = JSON.parse(data);
-		// console.log(currentStatus.leader);
+		leaderPort = currentStatus.leader;
+		// console.log(currentStatus);
 		client.destroy();
 	});
 
@@ -281,9 +284,11 @@ function heartBeats() {
 
 		client.connect(currentStatus.list[i], '127.0.0.1', function() {
 			client.write(JSON.stringify({message: 'heartBeats', from: currentPort}));
+			console.log(JSON.stringify({message: 'heartBeats', from: currentPort}));
 		});
 
 		client.on('data', function(data) {
+			console.log('data');
 			client.destroy();
 		});
 
@@ -292,6 +297,7 @@ function heartBeats() {
 	            console.log('Server ' + error.port + ' leaves the system.');
 	            index = currentStatus.list.indexOf(error.port);
 	            currentStatus.list.splice(index, 1);
+	            console.log(currentStatus.list);
 	        }else if (error.code === 'ECONNRESET'){
 	        	console.log('Server ' + error.port + ' leaves the system.');
 	            index = currentStatus.list.indexOf(error.port);
@@ -299,36 +305,14 @@ function heartBeats() {
 	        }else{
 	        	console.log(error);
 	        }
+	        client.destroy();
 		});
 
 		client.on('close', function() {
+			console.log('close');
+			client.destroy();
 		});
 	}
-
-	// check other LS
-	// thePort = var client = new net.Socket();
-	// var client = new net.Socket();
-
-	// client.connect((currentPort == 8079)? 8080:8079 , '127.0.0.1', function() {
-	// 	client.write(JSON.stringify({message: 'heartBeats', from: currentPort}));
-	// });
-
-	// client.on('data', function(data) {
-	// 	client.destroy();
-	// });
-
-	// client.on('error', function(error) {
-	// 	if (error.code === 'ECONNREFUSED') {
- //            console.log('LS ' + (currentPort == 8079)? 8080:8079 + ' leaves the system.');
- //        }else if (error.code === 'ECONNRESET'){
- //        	console.log('LS ' + (currentPort == 8079)? 8080:8079 + ' leaves the system.');
- //        }else{
- //        	// console.log(error);
- //        }
-	// });
-
-	// client.on('close', function() {
-	// });
 }
 
 /**
@@ -353,7 +337,7 @@ portscanner.findAPortNotInUse(8079, 3010, '127.0.0.1', function(error, port) {
 });
 
 // keep track of running server and other LS every 1.5 sec
-setInterval(heartBeats, 1500);
+// setInterval(heartBeats, 1500);
 
 process.on('SIGINT', function() {
 	console.log("\r\n\r\nBye!");

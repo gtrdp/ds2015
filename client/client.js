@@ -52,13 +52,17 @@ function sendMessage(port, message) {
 			handleKeyboardInput();
 		} else if (message == 'success') {
 			console.log('\n' + JSONData.details);
+			console.log('Process completed.');
 			waiting = false;
+			trial = 0;
 
 			client.destroy();
 			printCommand();
 		} else if (message == 'failed') {
 			console.log('\n' + JSONData.details);
+			console.log('Process completed.');
 			waiting = false;
+			trial = 0;
 			
 			client.destroy();
 			printCommand();
@@ -71,6 +75,10 @@ function sendMessage(port, message) {
 
 	client.on('close', function() {
 		// console.log('Connection closed');
+		if (waiting) {
+			console.log('LS breaks down in the middle of transaction.');
+			console.log('Will now pick up the result to other LS.');
+		}
 	});
 	client.on('error',function(e){
 		// console.log('error',e);
