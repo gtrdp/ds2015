@@ -8,6 +8,7 @@ var onProcess = false;
 
 var buffer = {message: "request", from: clientID, resource: '', amount: 0};
 var waiting = false;
+var trial = 0;
 
 function sendMessage(port, message) {
 	var client = new net.Socket();
@@ -37,12 +38,14 @@ function sendMessage(port, message) {
 				
 				currentLS = 0;
 				waiting = false;
+				trial = 0;
 				client.destroy();
 			} else if (from == LSPort[1]){
 				console.log('Announcement: Connected to LS2!');
 				
 				currentLS = 1;
 				waiting = false;
+				trial = 0;
 				client.destroy();
 			}
 
@@ -76,16 +79,20 @@ function sendMessage(port, message) {
 
 		// check if the current LS is down
 		if(e.code == 'ECONNREFUSED' && waiting) {
-			if (currentLS != -1) {
+			if (currentLS != -1 && trial < 3) {
 				console.log('Switching to other LS.\n');
 				currentLS = (currentLS == 0)? 1:0 ;
+				trial++;
 
 				sendMessage(LSPort[currentLS], message);
+			} else {
+				console.log('Number of maximum connection trial reached. Both LS\'s are down. Please try again later.');
+				process.exit();
 			}
 		}
 	});
 
-	client.setTimeout(5000, function(){
+	client.setTimeout(3000, function(){
 		if(currentLS == -1) {
 			console.log('No response from desired LS. Try again.');
 			clientID = clientID + 1;

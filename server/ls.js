@@ -81,6 +81,7 @@ function uniMsg(message, from, to, numberOfLoop, type) {
 
             counter = 0;
             leaderPort = 0;
+            currentStatus.leader = 0;
 		}else if (type = 'broadcast' && counter == 9) {
 			counter = 0;
 		}
@@ -136,6 +137,9 @@ function createServer(portNumber) {
             	console.log('Server ' + from + ' joins the system.');
             	if (currentStatus.list.indexOf(from) == -1) {
             		currentStatus.list.push(from);
+            	}
+
+            	if (currentStatus.leader == 0) {
             		currentStatus.leader = from;
             		leaderPort = from;
             	}
@@ -181,7 +185,7 @@ function getCurrentStatus(port) {
 			data = data.substring(0,n);
 
 		currentStatus = JSON.parse(data);
-		console.log(currentStatus.leader);
+		// console.log(currentStatus.leader);
 		client.destroy();
 	});
 
@@ -271,6 +275,62 @@ function requestResource(resources, amounts) {
 	});
 }
 
+function heartBeats() {
+	for (i = 0; i < currentStatus.list.length; i++) {
+		var client = new net.Socket();
+
+		client.connect(currentStatus.list[i], '127.0.0.1', function() {
+			client.write(JSON.stringify({message: 'heartBeats', from: currentPort}));
+		});
+
+		client.on('data', function(data) {
+			client.destroy();
+		});
+
+		client.on('error', function(error) {
+			if (error.code === 'ECONNREFUSED') {
+	            console.log('Server ' + error.port + ' leaves the system.');
+	            index = currentStatus.list.indexOf(error.port);
+	            currentStatus.list.splice(index, 1);
+	        }else if (error.code === 'ECONNRESET'){
+	        	console.log('Server ' + error.port + ' leaves the system.');
+	            index = currentStatus.list.indexOf(error.port);
+	            currentStatus.list.splice(index, 1);
+	        }else{
+	        	console.log(error);
+	        }
+		});
+
+		client.on('close', function() {
+		});
+	}
+
+	// check other LS
+	// thePort = var client = new net.Socket();
+	// var client = new net.Socket();
+
+	// client.connect((currentPort == 8079)? 8080:8079 , '127.0.0.1', function() {
+	// 	client.write(JSON.stringify({message: 'heartBeats', from: currentPort}));
+	// });
+
+	// client.on('data', function(data) {
+	// 	client.destroy();
+	// });
+
+	// client.on('error', function(error) {
+	// 	if (error.code === 'ECONNREFUSED') {
+ //            console.log('LS ' + (currentPort == 8079)? 8080:8079 + ' leaves the system.');
+ //        }else if (error.code === 'ECONNRESET'){
+ //        	console.log('LS ' + (currentPort == 8079)? 8080:8079 + ' leaves the system.');
+ //        }else{
+ //        	// console.log(error);
+ //        }
+	// });
+
+	// client.on('close', function() {
+	// });
+}
+
 /**
  * Starts here.
  */
@@ -292,7 +352,8 @@ portscanner.findAPortNotInUse(8079, 3010, '127.0.0.1', function(error, port) {
 	}
 });
 
-// keep track of running server and other LS every 2 sec
+// keep track of running server and other LS every 1.5 sec
+setInterval(heartBeats, 1500);
 
 process.on('SIGINT', function() {
 	console.log("\r\n\r\nBye!");

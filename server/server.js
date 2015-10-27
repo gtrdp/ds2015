@@ -101,7 +101,7 @@ function uniMsg(message, from, to, numberOfLoop, type) {
         	counter++;
             // console.log('Server ' + to + ' is down. Counter: ' + counter);
         }else{
-        	console.log(error);
+        	// console.log(error);
         }
 	});
 
@@ -159,7 +159,7 @@ function tellLS(message, to) {
 			leaderPort = currentStatus.leader;
 		}
 
-		console.log('Syncing the database...');
+		// console.log('Syncing the database...');
 
 		value = jsonfile.readFileSync(fileName);
 		// send the message
@@ -187,7 +187,7 @@ function tellLS(message, to) {
             	process.exit();
             }
         }else{
-        	console.log(error);
+        	// console.log(error);
         }
 	});
 
@@ -202,6 +202,13 @@ function createServer(portNumber) {
 			// console.log(socket.remotePort);
 			// 
 			// The input is not always JSON, please make sure that it can detects it
+			// check for duplicated value
+			data = data.toString();
+
+			n = data.indexOf("{", 2);
+			if(n > 0 && n == (data.length / 2))
+				data = data.substring(0,n);
+
 			var JSONData = JSON.parse(data.toString());
 
 			var message = JSONData.message;
@@ -225,6 +232,7 @@ function createServer(portNumber) {
 				// request resource message
 				console.log('\nReceived request of ' + JSONData.amount + ' ' + JSONData.resource);
 
+				// sleep here
 				mainSocket = socket;
 				if(!getResource(JSONData.resource, JSONData.amount)) {
 					socket.write(JSON.stringify({message: "failed", details: "There is no " + JSONData.amount + " " + JSONData.resource + " from " + currentPort}));
@@ -237,7 +245,7 @@ function createServer(portNumber) {
 
 				// check vector clock here
 				if(value.vectorClock > JSONData.content.vectorClock) {
-					console.log('My data is newer. Reject the sync.');
+					// console.log('My data is newer. Reject the sync.');
 
 					// send the message
 					uniMsg('{"message": "sync", "from": "'+currentPort+'", "content": '+JSON.stringify(value)+'}', currentPort, from, 0, 'unicast');
@@ -250,7 +258,7 @@ function createServer(portNumber) {
 					socket.write('reject');
 				}
 			} else if (message != 'sync' && message != 'syncCoordinate') {
-				console.log(data.toString());
+				// console.log(data.toString());
 			}
 		});
 
@@ -274,7 +282,7 @@ function createServer(portNumber) {
 	// startElectionTCP(portNumber);
 	
 	// register to LS
-	console.log('Joining the system. Contacting LS...');
+	console.log('Joining the system. Contacting LS and syncing the database...');
 	tellLS('{"message": "register", "from": "'+currentPort+'"}', 8080);
 	tellLS('{"message": "register", "from": "'+currentPort+'"}', 8079);
 }
@@ -316,7 +324,7 @@ function startDB() {
 		if (err) {
 		   return console.error(err);
 		}
-		console.log("Database created!");
+		// console.log("Database created!");
 
 		// please replicate
 	});
