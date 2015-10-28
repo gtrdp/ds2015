@@ -8,6 +8,7 @@ var onProcess = false;
 
 var buffer = {message: "request", from: clientID, resource: '', amount: 0};
 var waiting = false;
+var pickuping = false;
 var trial = 0;
 
 function sendMessage(port, message) {
@@ -54,6 +55,7 @@ function sendMessage(port, message) {
 			console.log('\n' + JSONData.details);
 			console.log('Process completed.');
 			waiting = false;
+			pickuping = false;
 			trial = 0;
 
 			client.destroy();
@@ -62,6 +64,7 @@ function sendMessage(port, message) {
 			console.log('\n' + JSONData.details);
 			console.log('Process completed.');
 			waiting = false;
+			pickuping = false;
 			trial = 0;
 			
 			client.destroy();
@@ -75,9 +78,13 @@ function sendMessage(port, message) {
 
 	client.on('close', function() {
 		// console.log('Connection closed');
-		if (waiting) {
+		if (waiting && !pickuping) {
 			console.log('LS breaks down in the middle of transaction.');
 			console.log('Will now pick up the result to other LS.');
+
+			currentLS = (currentLS == 0)? 1:0 ;
+			pickuping = true;
+			sendMessage(LSPort[currentLS], {message: 'pickup', from: clientID});
 		}
 	});
 	client.on('error',function(e){
@@ -91,6 +98,7 @@ function sendMessage(port, message) {
 				console.log('Switching to other LS.\n');
 				currentLS = (currentLS == 0)? 1:0 ;
 				trial++;
+				pickuping = true;
 
 				sendMessage(LSPort[currentLS], message);
 			} else {

@@ -23,6 +23,9 @@ var numberOfServer = 0;
 
 var sleep = require('sleep');
 
+var rerouteContent = {};
+var pickupRequest = false;
+
 // var sequence = Futures.sequence();
 
 function multiMsg(type) {
@@ -122,7 +125,7 @@ function createServer(portNumber) {
 					console.log('No server running.');
 					socket.write(JSON.stringify({message: "failed", details: "No servers running."}));
 				} else if (JSONData.resource == 'sugar' || JSONData.resource == 'salt' || JSONData.resource == 'milk') {
-					requestResource(JSONData.resource, JSONData.amount);
+					requestResource(JSONData.resource, JSONData.amount, JSONData.from);
 				} else {
 					// client requests something that is not on the resource list
 					console.log('Request rejected. No matching resources.');
@@ -147,6 +150,12 @@ function createServer(portNumber) {
 
             	// console.log(currentStatus);
 				socket.write(JSON.stringify(currentStatus));
+            } else if (message == 'reroute') {
+            	rerouteContent[JSONData.client] = JSONData.details;
+            	mainSocket.write(JSON.stringify(rerouteContent[JSONData.client]));
+            } else if (message == 'pickup') {
+            	console.log('Got a pickup request');
+            	mainSocket = socket;
             } else {
 				console.log(message);
 			}
@@ -235,12 +244,12 @@ function startElectionTCP(ourPort){
 	multiMsg('election');
 }
 
-function requestResource(resources, amounts) {
+function requestResource(resources, amounts, clientID) {
 	// tell the leader that the client need something
 	var client = new net.Socket();
 
 	client.connect(leaderPort, '127.0.0.1', function() {
-		client.write(JSON.stringify({message: "request", from: currentPort, resource: resources, amount: amounts}));
+		client.write(JSON.stringify({message: "request", from: currentPort, client: clientID, resource: resources, amount: amounts}));
 	});
 
 	client.on('data', function(data) {

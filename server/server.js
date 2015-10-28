@@ -18,9 +18,11 @@ var fileName = '';
 
 var buffer = null;
 var mainSocket = null;
-var temp = {amount: 0, resource: ''};
+var temp = {amount: 0, resource: '', clientID: 0, from: 0};
 
 var currentStatus = {leader: 0, list: [], client: 0};
+
+var sleep = require('sleep');
 
 function multiMsg(from, type, content) {
 	var numberOfLoop = 8090 - from;
@@ -96,10 +98,10 @@ function uniMsg(message, from, to, numberOfLoop, type) {
 	client.on('error', function(error) {
 		if (error.code === 'ECONNREFUSED') {
 			counter++;
-            console.log('Server ' + to + ' is down. Counter: ' + counter);
+            // console.log('Server ' + to + ' is down. Counter: ' + counter);
         }else if (error.code === 'ECONNRESET'){
         	counter++;
-            console.log('Server ' + to + ' is down. Counter: ' + counter);
+            // console.log('Server ' + to + ' is down. Counter: ' + counter);
         }else{
         	// console.log(error);
         }
@@ -131,11 +133,38 @@ function uniMsg(message, from, to, numberOfLoop, type) {
 			// write the file to database
 			jsonfile.writeFileSync(fileName, buffer);
 			console.log('The request has successfully been processed.');
-			mainSocket.write(JSON.stringify({message: "success", details: temp.amount + " " + temp.resource + " from " + currentPort}));
-			
+
+			if (!mainSocket.writable) {
+				console.log('The LS ' + temp.from + ' went down. Rerouting to other LS...');
+				rerouting((temp.from == 8080)? 8079:8080, {message: "success", details: temp.amount + " " + temp.resource + " from " + currentPort});
+			} else {
+				mainSocket.write(JSON.stringify({message: "success", details: temp.amount + " " + temp.resource + " from " + currentPort}));	
+			}
+
 			// sync to other servers
 			multiMsg(currentPort, 'sync', JSON.stringify(buffer));
 		}
+	});
+}
+
+function rerouting(port, content) {
+	var client = new net.Socket();
+
+	client.connect(port, '127.0.0.1', function() {
+		client.write(JSON.stringify({message: 'reroute', client: temp.clientID, details: content}));
+	});
+
+	client.on('data', function(data) {
+		
+		client.destroy();
+	});
+
+	client.on('error', function(error) {
+		
+	});
+
+	client.on('close', function() {
+		
 	});
 }
 
@@ -232,10 +261,18 @@ function createServer(portNumber) {
 				// request resource message
 				console.log('\nReceived request of ' + JSONData.amount + ' ' + JSONData.resource);
 
-				// sleep here
 				mainSocket = socket;
-				if(!getResource(JSONData.resource, JSONData.amount)) {
-					socket.write(JSON.stringify({message: "failed", details: "There is no " + JSONData.amount + " " + JSONData.resource + " from " + currentPort}));
+				
+				// sleep here
+				sleep.sleep(3);
+				if(!getResource(JSONData.resource, JSONData.amount, from, JSONData.client)) {
+					console.log(mainSocket.writable);
+					if (!mainSocket.writable) {
+						console.log('The LS ' + temp.from + ' went down. Rerouting to other LS...');
+						rerouting((temp.from == 8080)? 8079:8080, {message: "failed", details: "There is no " + JSONData.amount + " " + JSONData.resource + " from " + currentPort});
+					} else {
+						mainSocket.write(JSON.stringify({message: "failed", details: "There is no " + JSONData.amount + " " + JSONData.resource + " from " + currentPort}));
+					}
 				}
 			} else if (message == 'sync' && from != currentPort) {
 				// database syncronization
@@ -287,7 +324,7 @@ function createServer(portNumber) {
 	tellLS('{"message": "register", "from": "'+currentPort+'"}', 8079);
 }
 
-function getResource(resource, amount) {
+function getResource(resource, amount, from, clientID) {
 	var value = jsonfile.readFileSync(fileName);
 
 	if (value[resource] >= amount) {
@@ -298,6 +335,8 @@ function getResource(resource, amount) {
 		buffer = value;
 		temp.amount = amount;
 		temp.resource = resource;
+		temp.clientID = clientID;
+		temp.from = from;
 		multiMsg(currentPort, 'syncCoordinate');
 
 		return true;
