@@ -24,7 +24,8 @@ var numberOfServer = 0;
 var sleep = require('sleep');
 
 var rerouteContent = {};
-var pickupRequest = false;
+var processing = false;
+var taken = false;
 
 // var sequence = Futures.sequence();
 
@@ -111,6 +112,7 @@ function createServer(portNumber) {
 				if (waitingForElection) {
 					// the new leader is now known
 					waitingForElection = false;
+					taken = false;
 
 					console.log('\nForwarding the postponed request.');
 					// socket.write(JSON.stringify({"message":"success","details":"10 milk from 8081"}));
@@ -162,7 +164,9 @@ function createServer(portNumber) {
 		});
 
 		socket.on('close', function() {
-			// console.log('Close the connection.');
+			if(processing) {
+				console.log('Close the connection.');
+			}
 		});
 
 		socket.on('error', function(e) {
@@ -248,6 +252,8 @@ function requestResource(resources, amounts, clientID) {
 	// tell the leader that the client need something
 	var client = new net.Socket();
 
+	processing = true;
+
 	client.connect(leaderPort, '127.0.0.1', function() {
 		client.write(JSON.stringify({message: "request", from: currentPort, client: clientID, resource: resources, amount: amounts}));
 	});
@@ -267,6 +273,9 @@ function requestResource(resources, amounts, clientID) {
 		// console.log('After: ' + returnMessage);
 
 		mainSocket.write(returnMessage);
+		processing = false;
+		// console.log('return message: ' + returnMessage);
+		// client.destroy();
 	});
 
 	client.on('error', function(error) {
@@ -278,12 +287,26 @@ function requestResource(resources, amounts, clientID) {
 
     	// initiate election
     	waitingForElection = true;
-    	// client.destroy();
     	startElectionTCP(currentPort);
+
+    	client.destroy();
 	});
 
 	client.on('close', function() {
-		// console.log('Requesting connection closed.');
+		if(!taken) {
+			console.log('The leader ('+leaderPort+') suddenly went down.\n');
+    	
+	    	// save the info to global vars
+	    	requestedResource.resource = resources;
+	    	requestedResource.amount = amounts;
+
+	    	// initiate election
+	    	waitingForElection = true;
+	    	taken = true;
+	    	startElectionTCP(currentPort);
+
+	    	client.destroy();
+		}
 	});
 }
 
