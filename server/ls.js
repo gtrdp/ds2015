@@ -164,9 +164,9 @@ function createServer(portNumber) {
 		});
 
 		socket.on('close', function() {
-			if(processing) {
-				console.log('Close the connection.');
-			}
+			// if(processing) {
+			// 	console.log('Close the connection.');
+			// }
 		});
 
 		socket.on('error', function(e) {
@@ -263,17 +263,17 @@ function requestResource(resources, amounts, clientID) {
 		// console.log('Before: ' + returnMessage);
 
 		// check if the data valid or not
-		// n = returnMessage.indexOf("{", 2);
-		// if(n > 0)
-		// 	returnMessage = returnMessage.substring(0,n);
+		n = returnMessage.indexOf("{", 2);
+		if(n > 0)
+			returnMessage = returnMessage.substring(0,n);
 
-		// if(JSON.parse(returnMessage).message == 'request')
-		// 	returnMessage = '';
+		if(JSON.parse(returnMessage).message != 'request'){
+			processing = false;
+		}
 
 		// console.log('After: ' + returnMessage);
 
 		mainSocket.write(returnMessage);
-		processing = false;
 		// console.log('return message: ' + returnMessage);
 		// client.destroy();
 	});
@@ -293,7 +293,7 @@ function requestResource(resources, amounts, clientID) {
 	});
 
 	client.on('close', function() {
-		if(!taken) {
+		if(!taken && processing) {
 			console.log('The leader ('+leaderPort+') suddenly went down.\n');
     	
 	    	// save the info to global vars
@@ -303,6 +303,7 @@ function requestResource(resources, amounts, clientID) {
 	    	// initiate election
 	    	waitingForElection = true;
 	    	taken = true;
+	    	processing = false;
 	    	startElectionTCP(currentPort);
 
 	    	client.destroy();
